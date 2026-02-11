@@ -25,11 +25,10 @@ def load_data():
 df = load_data()
 
 if df is None:
-    st.error("train_sample.csv not found in deployment.")
+    st.error("Dataset file not found.")
     st.stop()
 
 st.write("Dataset Shape:", df.shape)
-st.write("Available Columns:", df.columns.tolist())
 st.dataframe(df.head())
 
 # -----------------------------
@@ -39,7 +38,7 @@ required_columns = ['pickup_latitude', 'pickup_longitude']
 missing_cols = [col for col in required_columns if col not in df.columns]
 
 if missing_cols:
-    st.error(f"Missing required columns: {missing_cols}")
+    st.error("Required latitude/longitude columns missing in dataset.")
     st.stop()
 
 x = df[required_columns]
@@ -48,6 +47,7 @@ x = df[required_columns]
 # Sampling (Cloud-safe)
 # -----------------------------
 max_allowed = min(len(x), 50000)
+
 sample_size = st.slider(
     "Select Sample Size",
     min_value=1000,
@@ -73,32 +73,26 @@ eps_values = [0.2, 0.3, 0.5]
 results = {}
 
 for eps in eps_values:
-    try:
-        db = DBSCAN(eps=eps, min_samples=5)
-        labels = db.fit_predict(x_scaled)
+    db = DBSCAN(eps=eps, min_samples=5)
+    labels = db.fit_predict(x_scaled)
 
-        n_clusters = len(set(labels) - {-1})
-        n_noise = list(labels).count(-1)
-        noise_ratio = n_noise / len(labels)
+    n_clusters = len(set(labels) - {-1})
+    n_noise = list(labels).count(-1)
+    noise_ratio = n_noise / len(labels)
 
-        mask = labels != -1
+    mask = labels != -1
+    if len(set(labels[mask])) > 1:
+        sil_score = silhouette_score(x_scaled[mask], labels[mask])
+    else:
+        sil_score = None
 
-        if len(set(labels[mask])) > 1:
-            sil_score = silhouette_score(x_scaled[mask], labels[mask])
-        else:
-            sil_score = None
-
-        results[eps] = {
-            "labels": labels,
-            "clusters": n_clusters,
-            "noise": n_noise,
-            "noise_ratio": noise_ratio,
-            "silhouette": sil_score
-        }
-
-    except Exception as e:
-        st.error(f"Error running DBSCAN for eps={eps}: {e}")
-        st.stop()
+    results[eps] = {
+        "labels": labels,
+        "clusters": n_clusters,
+        "noise": n_noise,
+        "noise_ratio": noise_ratio,
+        "silhouette": sil_score
+    }
 
 # -----------------------------
 # Display Evaluation
