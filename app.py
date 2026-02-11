@@ -15,7 +15,7 @@ st.title("🚕 NYC Taxi Pickup Hotspot Detection using DBSCAN")
 # -----------------------------
 @st.cache_data
 def load_data():
-    return pd.read_csv("train.csv")
+    return pd.read_csv("train_sample.csv")
 
 df = load_data()
 
